@@ -1,0 +1,7 @@
+
+# Large Datasets and Models
+backend/Dataset.zip
+backend/*.h5
+backend/*.tflite
+backend/saved_model_tfjs/
+frontend/public/tfjs_model/
