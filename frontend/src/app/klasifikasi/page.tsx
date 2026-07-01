@@ -81,7 +81,7 @@ export default function KlasifikasiPage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
-      
+
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     }
@@ -103,18 +103,20 @@ export default function KlasifikasiPage() {
       // TFJS Browser Inference
       // 1. Read image to tensor and convert to float
       let tensor = tf.browser.fromPixels(imageRef.current).toFloat();
-      
+
       // 2. Resize to 150x150
       tensor = tf.image.resizeBilinear(tensor, [150, 150]);
-      
-      // 3. Expand dims to match batch size: [1, 150, 150, 3]
-      // DO NOT divide by 255.0 because the original Python backend did not normalize it
+
+      // 3. Normalisasi manual ke rentang [-1, 1] karena layer Rescaling hilang saat konversi ke TFJS GraphModel
+      tensor = tensor.div(tf.scalar(127.5)).sub(tf.scalar(1));
+
+      // 4. Expand dims to match batch size: [1, 150, 150, 3]
       const inputTensor = tensor.expandDims(0);
-      
+
       // 4. Predict
       const predictionsTensor = model.predict(inputTensor) as tf.Tensor;
       const predictions = await predictionsTensor.data();
-      
+
       // Memory management
       tensor.dispose();
       inputTensor.dispose();
@@ -139,7 +141,7 @@ export default function KlasifikasiPage() {
 
       setResult(data);
       setIsModalOpen(true);
-      
+
       // Fetch Gemini
       fetchGeminiAdvice(data.prediction);
 
@@ -234,10 +236,10 @@ export default function KlasifikasiPage() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="image">Pilih Gambar X-Ray / MRI</Label>
-                <Input 
-                  id="image" 
-                  type="file" 
-                  accept="image/*" 
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
                   onChange={handleFileChange}
                   disabled={isLoading || isModelLoading}
                 />
@@ -252,10 +254,10 @@ export default function KlasifikasiPage() {
                 <div className="border rounded-lg p-2 bg-muted/20 flex flex-col items-center justify-center min-h-[300px]">
                   <p className="text-xs text-muted-foreground mb-2 w-full text-left">Preview Citra:</p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
+                  <img
                     ref={imageRef}
-                    src={previewUrl} 
-                    alt="Preview MRI" 
+                    src={previewUrl}
+                    alt="Preview MRI"
                     className="max-w-full max-h-[400px] object-contain rounded-md shadow-sm"
                     crossOrigin="anonymous"
                   />
@@ -293,14 +295,14 @@ export default function KlasifikasiPage() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center text-2xl">
-              <CheckCircle2 className="w-6 h-6 mr-2 text-green-500" /> 
+              <CheckCircle2 className="w-6 h-6 mr-2 text-green-500" />
               Hasil Analisis & Opini AI
             </DialogTitle>
             <DialogDescription>
               Laporan komprehensif dari Neural Network dan analisis sekunder Gemini AI.
             </DialogDescription>
           </DialogHeader>
-          
+
           {result && (
             <div className="space-y-4 py-4">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -320,19 +322,19 @@ export default function KlasifikasiPage() {
                     {Object.entries(result.all_scores)
                       .sort(([, a], [, b]) => b - a)
                       .map(([className, score]) => (
-                      <div key={className} className="flex flex-col gap-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="capitalize">{className}</span>
-                          <span>{(score * 100).toFixed(2)}%</span>
+                        <div key={className} className="flex flex-col gap-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="capitalize">{className}</span>
+                            <span>{(score * 100).toFixed(2)}%</span>
+                          </div>
+                          <div className="w-full bg-secondary rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full ${className === result.prediction ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                              style={{ width: `${score * 100}%` }}
+                            ></div>
+                          </div>
                         </div>
-                        <div className="w-full bg-secondary rounded-full h-1.5">
-                          <div 
-                            className={`h-1.5 rounded-full ${className === result.prediction ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                            style={{ width: `${score * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               </div>
@@ -343,7 +345,7 @@ export default function KlasifikasiPage() {
                   <Sparkles className="w-5 h-5 mr-2" />
                   Insight Klinis dari Gemini AI
                 </div>
-                
+
                 {isGeminiLoading ? (
                   <div className="flex flex-col items-center justify-center py-6 space-y-3">
                     <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -354,9 +356,9 @@ export default function KlasifikasiPage() {
                     {geminiAdvice ? (
                       geminiAdvice.split('\n').map((line, i) => {
                         if (!line.trim()) return null;
-                        
+
                         const parts = line.split(/(\*\*.*?\*\*)/g);
-                        
+
                         return (
                           <p key={i}>
                             {parts.map((part, j) => {
@@ -379,7 +381,7 @@ export default function KlasifikasiPage() {
               </div>
             </div>
           )}
-          
+
           <div className="flex justify-end pt-2 border-t mt-2">
             <Button onClick={() => setIsModalOpen(false)}>Tutup</Button>
           </div>
